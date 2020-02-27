@@ -117,9 +117,6 @@ async function getTitle(link, page, key) {
     const arrContentFile = contentsFile.split('\n');
     console.log(arrContentFile);
 
-    const contentsFile2 = fs.readFileSync('listSpin', 'utf8');
-    const arrContentFile2 = contentsFile2.split('\n');
-    console.log(arrContentFile2);
 
     const resultsNotExist = [];
 
@@ -133,7 +130,7 @@ async function getTitle(link, page, key) {
     })
 
     const promises = [];
-    for (let i = 0; i < 5; i++) { // resultsNotExist.length
+    for (let i = 0; i < 1; i++) { // resultsNotExist.length
         promises.push(await getTitle(resultsNotExist[i].fullLink, page, i).catch((err) => console.log(err)))
     }
 
@@ -168,49 +165,73 @@ async function getTitle(link, page, key) {
     const listImage = await Promise.all(promisesGetImage);
     let indexImage = 0;
     const dataContent = [];
+
+    const contentsFile2 = fs.readFileSync('listSpin', 'utf8').split("\r").join("");
+    const arrContentFile2 = contentsFile2.split('\n');
+    
     resultDataRemoveNotUse.forEach((page, index) => {
         dataContent[index] = '';
         page.forEach((row, indexPage) => {
             if (typeof row === 'object') {
                 if (row.image) {
                     indexImage += 1;
-                    dataContent[index] += `\n <img src='${listImage[indexImage - 1]}' />\n`;
+                    if(row.imageDesc) {
+                        // dataContent[index] += `\n <img src='${listImage[indexImage - 1]}' /><p>${row.imageDesc}</p>`;
+                    
+                    } else {
+                    // dataContent[index] += `\n <img src='${listImage[indexImage - 1]}' />\n`;
+                    }
+                   
                 };
             } else {
                 if (row) {
+                    arrContentFile2.forEach((listSynonym)=>{
+                        console.log(row, '===========================')
+                        listSynonym.split('|').forEach((synonym)=>{
+                            if(row.includes(" "+synonym+ " ")) {
+                                console.log(synonym, 'synonymsynonymsynonymsynonymsynonymsynonymsynonymsynonym');
+                                row = row.replace(new RegExp(synonym, "gi"), `{${listSynonym}}`)
+                            }
+                        })
+                    })
                     if (indexPage === 0) {
                         dataContent[index] += `\n <strong>${row}</strong> \n`;
                     }
                     else {
                         dataContent[index] += `\n${row}\n`;
                     }
+                    console.log(row);
                 }
             }
         })
     })
 
     // post to WP
+
+
+    
     // console.log(resultsNotExist);
-    // dataContent.forEach((content, index) => {
-    //     console.log('start POST API');
-    //     const dataPost = {
-    //         title: resultsNotExist[index].title,
-    //         content: content,
-    //     }
+    dataContent.forEach((content, index) => {
+        console.log('start POST API');
 
-    //     console.log('start POST API', resultsNotExist[index].title);
+        const dataPost = {
+            title: resultsNotExist[index].title,
+            content: content,
+        }
+        
+        console.log('start POST API', resultsNotExist[index].title, content);
 
-    //     axios.post(POST_API, dataPost, {
-    //         auth: {
-    //             username: USER_NAME,
-    //             password: PASSWORD,
-    //         }
-    //     }).then((response) => {
-    //         console.log(response && response.headers && response.headers.location);
-    //         fs.appendFileSync('postExist', resultsNotExist[index].fullLink + '\n');
-    //     })
-    //         .catch(err => { console.log(err.response) });
+        // axios.post(POST_API, dataPost, {
+        //     auth: {
+        //         username: USER_NAME,
+        //         password: PASSWORD,
+        //     }
+        // }).then((response) => {
+        //     console.log(response && response.headers && response.headers.location);
+        //     fs.appendFileSync('postExist', resultsNotExist[index].fullLink + '\n');
+        // })
+        //     .catch(err => { console.log(err.response) });
 
-    // })
+    })
     await browser.close();
 })();
