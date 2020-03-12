@@ -5,13 +5,9 @@ app/.env
 node_modules
 stats.json
 __snapshots__
-app/containers/Users
-app/containers/TourCore
 # Cruft
-.DS_Store
 npm-debug.log
 .idea
 .vscode
 package-lock.json
 .gitmodules
-sentry.properties
