@@ -2,7 +2,7 @@ const puppeteer = require('puppeteer');
 const Promise = require('promise');
 const fs = require('fs');
 const axios = require('axios');
-
+const spin = require('string-content-spinner');
 
 
 // const GET_API = 'https://vietnamnet.vn/rss/kinh-doanh.rss';
@@ -26,16 +26,25 @@ async function getTitle(link, page, key) {
         let contentItemText = '';
         const resultsDataPage = [...listItem].map((item) => {
             let contentItem = item.querySelector("div.inner-article");
-
             if (contentItem) {
                 return item.innerHTML;
+            }
+            if(item.className === 'inner-article') {
+                return '';
             }
 
             contentItem = item.querySelector("div.bold.ArticleLead > h2 > p");
             if (contentItem) {
                 contentItemText = contentItem.innerText
                 return contentItemText;
-            } else {
+            } else if(item.querySelector("img")) {
+                const contentItemImg = item.querySelector('img');
+
+                    return {
+                        image: contentItemImg.src,
+                    };
+            }
+            else {
                 if (item.querySelector("tbody")) {
                     const contentItemImg = item.querySelector('img');
                     const contentItemImgDesc = item.querySelector('.image_desc');
@@ -112,10 +121,8 @@ async function getTitle(link, page, key) {
 
         return links;
     });
-    console.log(results, 'results');
     const contentsFile = fs.readFileSync('postExist', 'utf8');
     const arrContentFile = contentsFile.split('\n');
-    console.log(arrContentFile);
 
 
     const resultsNotExist = [];
@@ -130,13 +137,12 @@ async function getTitle(link, page, key) {
     })
 
     const promises = [];
-    for (let i = 0; i < 1; i++) { // resultsNotExist.length
+    for (let i = 0; i < resultsNotExist.length; i++) { // resultsNotExist.length
         promises.push(await getTitle(resultsNotExist[i].fullLink, page, i).catch((err) => console.log(err)))
     }
 
     const resultData = await Promise.all(promises);
-    console.log(resultData);
-
+    
     const promisesGetImage = [];
 
     const resultDataRemoveNotUse = resultData.map((page) => {
@@ -176,20 +182,18 @@ async function getTitle(link, page, key) {
                 if (row.image) {
                     indexImage += 1;
                     if(row.imageDesc) {
-                        // dataContent[index] += `\n <img src='${listImage[indexImage - 1]}' /><p>${row.imageDesc}</p>`;
+                        dataContent[index] += `\n <img src='${listImage[indexImage - 1]}' /><p>${row.imageDesc}</p>`;
                     
                     } else {
-                    // dataContent[index] += `\n <img src='${listImage[indexImage - 1]}' />\n`;
+                    dataContent[index] += `\n <img src='${listImage[indexImage - 1]}' />\n`;
                     }
                    
                 };
             } else {
                 if (row) {
                     arrContentFile2.forEach((listSynonym)=>{
-                        console.log(row, '===========================')
                         listSynonym.split('|').forEach((synonym)=>{
                             if(row.includes(" "+synonym+ " ")) {
-                                console.log(synonym, 'synonymsynonymsynonymsynonymsynonymsynonymsynonymsynonym');
                                 row = row.replace(new RegExp(synonym, "gi"), `{${listSynonym}}`)
                             }
                         })
@@ -200,7 +204,6 @@ async function getTitle(link, page, key) {
                     else {
                         dataContent[index] += `\n${row}\n`;
                     }
-                    console.log(row);
                 }
             }
         })
@@ -216,21 +219,20 @@ async function getTitle(link, page, key) {
 
         const dataPost = {
             title: resultsNotExist[index].title,
-            content: content,
+            content: spin(content),
         }
         
-        console.log('start POST API', resultsNotExist[index].title, content);
 
-        // axios.post(POST_API, dataPost, {
-        //     auth: {
-        //         username: USER_NAME,
-        //         password: PASSWORD,
-        //     }
-        // }).then((response) => {
-        //     console.log(response && response.headers && response.headers.location);
-        //     fs.appendFileSync('postExist', resultsNotExist[index].fullLink + '\n');
-        // })
-        //     .catch(err => { console.log(err.response) });
+        axios.post(POST_API, dataPost, {
+            auth: {
+                username: USER_NAME,
+                password: PASSWORD,
+            }
+        }).then((response) => {
+            console.log(response && response.headers && response.headers.location);
+            fs.appendFileSync('postExist', resultsNotExist[index].fullLink + '\n');
+        })
+            .catch(err => { console.log(err.response) });
 
     })
     await browser.close();
